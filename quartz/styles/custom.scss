@@ -1,3 +1,138 @@
 @use "./variables.scss" as *;
 
-// put your custom CSS here!
+/* =====================================================================
+   AI 知识库 · 现代浅色定制（覆盖 Quartz default 主题）
+   目标：简洁留白、精致中文排版、克制 teal 强调色
+   ===================================================================== */
+
+/* ---------- 字体：现代系统中文字体栈（零下载，国内秒开） ---------- */
+:root {
+  --headerFont: "Schibsted Grotesk", ui-sans-serif, system-ui, -apple-system,
+    "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", "Source Han Sans SC",
+    "Noto Sans SC", sans-serif;
+  --bodyFont: ui-sans-serif, system-ui, -apple-system, "PingFang SC",
+    "HarmonyOS Sans SC", "Microsoft YaHei", "Source Han Sans SC", "Noto Sans SC",
+    sans-serif;
+  --codeFont: "JetBrains Mono", "IBM Plex Mono", ui-monospace, "SF Mono",
+    "Cascadia Code", Consolas, "PingFang SC", "Microsoft YaHei", monospace;
+}
+
+/* ---------- 全局：抗锯齿，文字更细腻 ---------- */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* ---------- 正文排版：中文友好的行距与字号 ---------- */
+.center article {
+  font-size: 1.03rem;
+  line-height: 1.9;
+}
+.center article :is(p, li) {
+  line-height: 1.9;
+}
+.center article h1 {
+  font-size: 1.95rem;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+  margin-top: 0.6rem;
+}
+.center article h2 {
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--lightgray);
+}
+.center article h3 {
+  font-weight: 700;
+}
+
+/* ---------- 内链：去掉黄色高亮块，改克制的滑动下划线 ---------- */
+a.internal {
+  background-color: transparent !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  color: var(--secondary);
+  font-weight: 500;
+  text-decoration: none;
+  background-image: linear-gradient(var(--tertiary), var(--tertiary));
+  background-position: 0 calc(100% - 1px);
+  background-repeat: no-repeat;
+  background-size: 0% 1.5px;
+  transition: background-size 0.25s ease, color 0.2s ease;
+}
+a.internal:hover {
+  color: var(--tertiary);
+  background-size: 100% 1.5px;
+}
+a.internal:has(> img) {
+  background-image: none;
+}
+
+/* ---------- 首页：关图谱后收为两栏，正文更舒展 ---------- */
+.home #quartz-body,
+[data-slug="index"] #quartz-body {
+  grid-template-columns: #{$sidePanelWidth} auto !important;
+  grid-template-areas:
+    "grid-sidebar-left grid-header"
+    "grid-sidebar-left grid-center"
+    "grid-sidebar-left grid-footer" !important;
+}
+.home .sidebar.right,
+[data-slug="index"] .sidebar.right {
+  display: none !important;
+}
+
+/* ---------- 首页推荐入口：卡片网格 ---------- */
+.home article > ul:has(> li > a.internal),
+article.home > ul:has(> li > a.internal) {
+  list-style: none;
+  padding-left: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 0.85rem;
+  margin: 1.4rem 0;
+}
+.home article > ul:has(> li > a.internal) > li,
+article.home > ul:has(> li > a.internal) > li {
+  margin: 0;
+}
+.home article > ul:has(> li > a.internal) > li > a.internal,
+article.home > ul:has(> li > a.internal) > li > a.internal {
+  display: block;
+  padding: 1.05rem 1.15rem !important;
+  border: 1px solid var(--lightgray);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--secondary) 4%, var(--light));
+  background-image: none;
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: var(--dark);
+  transition: transform 0.18s ease, border-color 0.18s ease,
+    box-shadow 0.18s ease, color 0.18s ease;
+}
+.home article > ul:has(> li > a.internal) > li > a.internal:hover,
+article.home > ul:has(> li > a.internal) > li > a.internal:hover {
+  transform: translateY(-3px);
+  border-color: var(--secondary);
+  box-shadow: 0 10px 28px -14px color-mix(in srgb, var(--secondary) 50%, transparent);
+  color: var(--secondary);
+}
+
+/* ---------- callout / 代码块 / 分隔线：圆角与留白现代化 ---------- */
+.callout {
+  border-radius: 12px;
+}
+pre {
+  border-radius: 10px;
+}
+hr {
+  margin: 2.5rem auto;
+}
+
+/* ---------- 侧栏站点标题精致 ---------- */
+.page-title a {
+  font-weight: 800;
+  letter-spacing: -0.4px;
+}

@@ -12,7 +12,7 @@ configuration:
     - templates
     - .obsidian
   theme:
-    fontOrigin: googleFonts
+    fontOrigin: local
     cdnCaching: true
     typography:
       header: Schibsted Grotesk
@@ -20,25 +20,25 @@ configuration:
       code: IBM Plex Mono
     colors:
       lightMode:
-        light: "#faf8f8"
-        lightgray: "#e5e5e5"
-        gray: "#b8b8b8"
-        darkgray: "#4e4e4e"
-        dark: "#2b2b2b"
-        secondary: "#284b63"
-        tertiary: "#84a59d"
-        highlight: rgba(143, 159, 169, 0.15)
-        textHighlight: "#fff23688"
+        light: "#ffffff"
+        lightgray: "#e8e8ec"
+        gray: "#9a9aa3"
+        darkgray: "#2e2e36"
+        dark: "#15151a"
+        secondary: "#0f766e"
+        tertiary: "#0d9488"
+        highlight: "rgba(15, 118, 110, 0.08)"
+        textHighlight: "#fde68aaa"
       darkMode:
-        light: "#161618"
-        lightgray: "#393639"
-        gray: "#646464"
-        darkgray: "#d4d4d4"
-        dark: "#ebebec"
-        secondary: "#7b97aa"
-        tertiary: "#84a59d"
-        highlight: rgba(143, 159, 169, 0.15)
-        textHighlight: "#b3aa0288"
+        light: "#16161a"
+        lightgray: "#2a2a31"
+        gray: "#6a6a78"
+        darkgray: "#c9c9d2"
+        dark: "#f1f1f5"
+        secondary: "#2dd4bf"
+        tertiary: "#5eead4"
+        highlight: "rgba(45, 212, 191, 0.12)"
+        textHighlight: "rgba(45, 212, 191, 0.22)"
 plugins:
   - source: github:quartz-community/created-modified-date
     enabled: true
@@ -155,7 +155,7 @@ plugins:
       position: left
       priority: 50
   - source: github:quartz-community/graph
-    enabled: true
+    enabled: false
     layout:
       position: right
       priority: 10

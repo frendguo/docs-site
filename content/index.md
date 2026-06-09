@@ -1,5 +1,7 @@
 ---
 title: AI 知识库
+cssclasses:
+  - home
 ---
 
 > [!abstract] 关于本站
