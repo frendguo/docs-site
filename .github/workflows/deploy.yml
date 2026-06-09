@@ -58,10 +58,17 @@ jobs:
           GDRIVE_IMAGES_FOLDER_ID: ${{ secrets.GDRIVE_IMAGES_FOLDER_ID }}
         run: |
           printf '%s' "$GDRIVE_SA_JSON" > "$RUNNER_TEMP/sa.json"
-          echo "诊断:AI_FOLDER_ID 长度=${#GDRIVE_AI_FOLDER_ID}  IMAGES_FOLDER_ID 长度=${#GDRIVE_IMAGES_FOLDER_ID}"
-          rclone copy ":drive,service_account_file=${RUNNER_TEMP}/sa.json,scope=drive.readonly,root_folder_id=${GDRIVE_AI_FOLDER_ID}:" "content/1 - AI" -v --stats-one-line --transfers 16
-          rclone copy ":drive,service_account_file=${RUNNER_TEMP}/sa.json,scope=drive.readonly,root_folder_id=${GDRIVE_IMAGES_FOLDER_ID}:" "content/99 - images" -v --stats-one-line --transfers 16
-          echo "=== 拉取后 content 下文件总数 ==="
+          DRIVE=":drive,service_account_file=${RUNNER_TEMP}/sa.json,scope=drive.readonly"
+          echo "=== SA 邮箱(请核对是否共享给了它)==="
+          grep -o '"client_email": *"[^"]*"' "$RUNNER_TEMP/sa.json"
+          echo "=== 【共享给 SA】的顶层项(shared_with_me)==="
+          rclone lsd "${DRIVE},shared_with_me=true:" || true
+          echo "=== root_folder_id=AI 下的子目录 ==="
+          rclone lsd "${DRIVE},root_folder_id=${GDRIVE_AI_FOLDER_ID}:" || true
+          echo "=== 拉取(root_folder_id 方式)==="
+          rclone copy "${DRIVE},root_folder_id=${GDRIVE_AI_FOLDER_ID}:" "content/1 - AI" -v --stats-one-line --transfers 16 || true
+          rclone copy "${DRIVE},root_folder_id=${GDRIVE_IMAGES_FOLDER_ID}:" "content/99 - images" -v --stats-one-line --transfers 16 || true
+          echo "=== content 下文件总数 ==="
           find content -type f | wc -l
           rm -f "$RUNNER_TEMP/sa.json"
 
