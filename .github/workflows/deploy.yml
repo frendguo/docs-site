@@ -75,6 +75,16 @@ jobs:
       - name: Adapt Obsidian content
         run: node scripts/adapt-obsidian.mjs
 
+      - name: Unignore pulled content for build
+        run: |
+          # Quartz build 用 globby({gitignore:true}) 扫描 content(见 quartz/util/glob.ts),
+          # 会跳过 .gitignore 里 content/* 忽略的拉取内容,导致只剩 content/index.md(Found 1)。
+          # 内容由 CI 从 Drive 拉取、不入库,此处仅在 runner 上临时移除 content 忽略规则,
+          # 让拉取的文章/图片能被 Quartz 扫描构建。不提交,不影响仓库的 git 跟踪。
+          sed -i '/content/d' .gitignore
+          echo "=== 解除后 .gitignore ==="; cat .gitignore
+          echo "=== 解除忽略后 Quartz 可见的 md 数 ==="; find content -name '*.md' -type f | wc -l
+
       - name: Install Quartz plugins
         run: npx quartz plugin install
 
