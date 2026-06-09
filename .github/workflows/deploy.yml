@@ -91,6 +91,9 @@ jobs:
       - name: Build site
         run: npx quartz build
 
+      - name: Trim search index (减小 contentIndex 全文,提速首屏)
+        run: node scripts/trim-content-index.mjs
+
       - name: Deploy to Cloudflare Pages
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
