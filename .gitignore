@@ -11,3 +11,8 @@ private/
 replit.nix
 .quartz/
 quartz/cli/tui/dist/
+
+# 站点正文内容由 CI 在构建时用 rclone 从 Google Drive 拉取,不纳入版本库
+content/*
+!content/.gitkeep
+!content/index.md
