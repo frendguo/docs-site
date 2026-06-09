@@ -98,7 +98,7 @@ article.home ul:has(> li > a.internal) > li > a.internal {
   display: block;
   padding: 1.05rem 1.15rem !important;
   border: 1px solid var(--lightgray);
-  border-radius: 14px;
+  border-radius: 14px !important;
   background: color-mix(in srgb, var(--secondary) 4%, var(--light)) !important;
   font-weight: 600;
   font-size: 1.05rem;
