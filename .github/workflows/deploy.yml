@@ -58,16 +58,11 @@ jobs:
           GDRIVE_IMAGES_FOLDER_ID: ${{ secrets.GDRIVE_IMAGES_FOLDER_ID }}
         run: |
           printf '%s' "$GDRIVE_SA_JSON" > "$RUNNER_TEMP/sa.json"
-          rclone copy ":drive:" "content/1 - AI" \
-            --drive-service-account-file "$RUNNER_TEMP/sa.json" \
-            --drive-scope drive.readonly \
-            --drive-root-folder-id "$GDRIVE_AI_FOLDER_ID" \
-            --fast-list --transfers 16 --checkers 16
-          rclone copy ":drive:" "content/99 - images" \
-            --drive-service-account-file "$RUNNER_TEMP/sa.json" \
-            --drive-scope drive.readonly \
-            --drive-root-folder-id "$GDRIVE_IMAGES_FOLDER_ID" \
-            --fast-list --transfers 16 --checkers 16
+          echo "诊断:AI_FOLDER_ID 长度=${#GDRIVE_AI_FOLDER_ID}  IMAGES_FOLDER_ID 长度=${#GDRIVE_IMAGES_FOLDER_ID}"
+          rclone copy ":drive,service_account_file=${RUNNER_TEMP}/sa.json,scope=drive.readonly,root_folder_id=${GDRIVE_AI_FOLDER_ID}:" "content/1 - AI" -v --stats-one-line --transfers 16
+          rclone copy ":drive,service_account_file=${RUNNER_TEMP}/sa.json,scope=drive.readonly,root_folder_id=${GDRIVE_IMAGES_FOLDER_ID}:" "content/99 - images" -v --stats-one-line --transfers 16
+          echo "=== 拉取后 content 下文件总数 ==="
+          find content -type f | wc -l
           rm -f "$RUNNER_TEMP/sa.json"
 
       - name: Adapt Obsidian content

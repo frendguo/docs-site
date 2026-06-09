@@ -6,7 +6,7 @@ configuration:
   enablePopovers: true
   analytics: null
   locale: zh-CN
-  baseUrl: ai-knowledge-base.pages.dev
+  baseUrl: ai-knowledge-base-15h.pages.dev
   ignorePatterns:
     - private
     - templates
