@@ -75,6 +75,9 @@ jobs:
       - name: Adapt Obsidian content
         run: node scripts/adapt-obsidian.mjs
 
+      - name: Generate homepage (平铺全部文章到首页)
+        run: node scripts/generate-home.mjs
+
       - name: Unignore pulled content for build
         run: |
           # Quartz build 用 globby({gitignore:true}) 扫描 content(见 quartz/util/glob.ts),
