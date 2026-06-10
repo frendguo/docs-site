@@ -428,3 +428,103 @@ hr {
   font-weight: 800;
   letter-spacing: -0.4px;
 }
+
+/* =====================================================================
+   侧栏 Explorer · 现代文档站风格
+   与首页同一设计语言:mono kicker 标题、缩进参考线、teal pill 当前页。
+   显示名去「NN - 」前缀由 quartz.config.yaml 的 explorer mapFn 完成。
+   ===================================================================== */
+
+/* 标题 INDEX:mono kicker,与首页 home-kicker 呼应 */
+.explorer button.desktop-explorer h2 {
+  font-family: var(--codeFont);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--gray);
+  transition: color 0.15s ease;
+}
+.explorer button.desktop-explorer:hover h2 {
+  color: var(--secondary);
+}
+.explorer .fold {
+  color: var(--gray);
+}
+
+/* 容器:细滚动条 */
+.explorer-content {
+  scrollbar-width: thin;
+  scrollbar-color: var(--lightgray) transparent;
+}
+
+/* 条目:块级 pill,去掉默认透明度分层改用颜色分层 */
+.explorer-content ul li {
+  margin: 0.06rem 0;
+}
+.explorer-content ul li > a {
+  display: block;
+  box-sizing: border-box;
+  padding: 0.3rem 0.55rem;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--darkgray);
+  opacity: 1 !important;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+.explorer-content ul li > a:hover {
+  background: color-mix(in srgb, var(--secondary) 5%, transparent);
+  color: var(--dark);
+}
+/* 当前页:teal pill + 加重 */
+.explorer-content ul li > a.active {
+  background: color-mix(in srgb, var(--secondary) 8%, transparent);
+  color: var(--secondary) !important;
+  font-weight: 600;
+}
+
+/* 文件夹行:深色加重(teal 留给交互态),细 chevron */
+.folder-container {
+  padding: 0.26rem 0;
+}
+.folder-container .folder-icon {
+  width: 11px;
+  height: 11px;
+  margin-right: 7px;
+  color: var(--gray);
+}
+.folder-container div > a,
+.folder-container div > button span.folder-title {
+  font-size: 0.88rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--dark);
+}
+.folder-container div > a:hover,
+.folder-container div > button:hover span.folder-title {
+  color: var(--secondary);
+}
+
+/* 子级:缩进参考线 */
+.explorer-content .folder-outer > ul {
+  margin-left: 5px;
+  padding-left: 0.7rem;
+  border-left: 1px solid var(--lightgray);
+}
+/* 子级当前页:teal 短条压在参考线上 */
+.folder-outer > ul li > a {
+  position: relative;
+}
+.folder-outer > ul li > a.active::before {
+  content: "";
+  position: absolute;
+  left: calc(-0.7rem - 1px);
+  top: 18%;
+  bottom: 18%;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--secondary);
+}

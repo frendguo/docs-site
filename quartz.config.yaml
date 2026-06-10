@@ -151,6 +151,12 @@ plugins:
     enabled: true
   - source: github:quartz-community/explorer
     enabled: true
+    options:
+      title: INDEX
+      # mapFn/sortFn 以字符串传入:组件序列化进 data-data-fns,客户端 new Function 重建执行
+      # mapFn 去掉「NN - 」排序前缀;sortFn 改按 slugSegment(保留前缀)排,显示名变了顺序不变
+      mapFn: '(node) => { if (node.displayName) { node.displayName = node.displayName.replace(/^\d+\s*-\s*/, "") } }'
+      sortFn: '(a, b) => { if (a.isFolder !== b.isFolder) { return a.isFolder ? -1 : 1 } return (a.slugSegment || "").localeCompare(b.slugSegment || "", undefined, { numeric: true, sensitivity: "base" }) }'
     layout:
       position: left
       priority: 50
