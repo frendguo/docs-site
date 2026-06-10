@@ -6,22 +6,124 @@
 // 用法: node scripts/adapt-obsidian.mjs [contentDir]   (默认 content)
 
 import { readFileSync, writeFileSync, readdirSync, statSync } from "node:fs"
-import { join } from "node:path"
-
-const CONTENT_DIR = process.argv[2] ?? "content"
+import { join, resolve } from "node:path"
+import { fileURLToPath } from "node:url"
 
 // 标准 HTML 标签白名单:在集合内的标签保留为真正的 HTML(如 <sup> <details> <br>),
 // 其余形如 <name> <path> <your-token> 的"伪标签"视为占位符,转义为可见文本。
 const HTML_TAGS = new Set([
-  "a","abbr","address","area","article","aside","audio","b","base","bdi","bdo","blockquote",
-  "body","br","button","canvas","caption","cite","code","col","colgroup","data","datalist","dd",
-  "del","details","dfn","dialog","div","dl","dt","em","embed","fieldset","figcaption","figure",
-  "footer","form","h1","h2","h3","h4","h5","h6","head","header","hgroup","hr","html","i","iframe",
-  "img","input","ins","kbd","label","legend","li","link","main","map","mark","menu","meta","meter",
-  "nav","noscript","object","ol","optgroup","option","output","p","param","picture","pre","progress",
-  "q","rp","rt","ruby","s","samp","script","section","select","slot","small","source","span","strong",
-  "style","sub","summary","sup","table","tbody","td","template","textarea","tfoot","th","thead","time",
-  "title","tr","track","u","ul","var","video","wbr",
+  "a",
+  "abbr",
+  "address",
+  "area",
+  "article",
+  "aside",
+  "audio",
+  "b",
+  "base",
+  "bdi",
+  "bdo",
+  "blockquote",
+  "body",
+  "br",
+  "button",
+  "canvas",
+  "caption",
+  "cite",
+  "code",
+  "col",
+  "colgroup",
+  "data",
+  "datalist",
+  "dd",
+  "del",
+  "details",
+  "dfn",
+  "dialog",
+  "div",
+  "dl",
+  "dt",
+  "em",
+  "embed",
+  "fieldset",
+  "figcaption",
+  "figure",
+  "footer",
+  "form",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "head",
+  "header",
+  "hgroup",
+  "hr",
+  "html",
+  "i",
+  "iframe",
+  "img",
+  "input",
+  "ins",
+  "kbd",
+  "label",
+  "legend",
+  "li",
+  "link",
+  "main",
+  "map",
+  "mark",
+  "menu",
+  "meta",
+  "meter",
+  "nav",
+  "noscript",
+  "object",
+  "ol",
+  "optgroup",
+  "option",
+  "output",
+  "p",
+  "param",
+  "picture",
+  "pre",
+  "progress",
+  "q",
+  "rp",
+  "rt",
+  "ruby",
+  "s",
+  "samp",
+  "script",
+  "section",
+  "select",
+  "slot",
+  "small",
+  "source",
+  "span",
+  "strong",
+  "style",
+  "sub",
+  "summary",
+  "sup",
+  "table",
+  "tbody",
+  "td",
+  "template",
+  "textarea",
+  "tfoot",
+  "th",
+  "thead",
+  "time",
+  "title",
+  "tr",
+  "track",
+  "u",
+  "ul",
+  "var",
+  "video",
+  "wbr",
 ])
 
 function walk(dir) {
@@ -35,7 +137,7 @@ function walk(dir) {
   return out
 }
 
-function adapt(text) {
+export function adapt(text) {
   // 1) 去掉 Obsidian 反斜杠转义尖括号(\< \>)。否则在表格/高亮嵌套下会残留为
   //    <name\> 这类含非法字符的标签,使 Quartz 的 JSX 渲染整体崩溃。
   text = text.replace(/\\([<>])/g, "$1")
@@ -49,9 +151,8 @@ function adapt(text) {
   stash(/`[^`\n]+`/g) // 行内代码
 
   // 3) 非代码区:把不在白名单内的伪标签转义为可见文本(<name> → &lt;name&gt;)。
-  text = text.replace(
-    /<\/?([a-zA-Z][a-zA-Z0-9-]*)(?:\s[^>]*)?\/?>/g,
-    (m, tag) => (HTML_TAGS.has(tag.toLowerCase()) ? m : m.replace(/</g, "&lt;").replace(/>/g, "&gt;")),
+  text = text.replace(/<\/?([a-zA-Z][a-zA-Z0-9-]*)(?:\s[^>]*)?\/?>/g, (m, tag) =>
+    HTML_TAGS.has(tag.toLowerCase()) ? m : m.replace(/</g, "&lt;").replace(/>/g, "&gt;"),
   )
 
   // 4) 还原代码区。
@@ -59,14 +160,22 @@ function adapt(text) {
   return text
 }
 
-const files = walk(CONTENT_DIR)
-let changed = 0
-for (const fp of files) {
-  const before = readFileSync(fp, "utf8")
-  const after = adapt(before)
-  if (after !== before) {
-    writeFileSync(fp, after, "utf8")
-    changed++
+function main() {
+  const contentDir = process.argv[2] ?? "content"
+  const files = walk(contentDir)
+  let changed = 0
+  for (const fp of files) {
+    const before = readFileSync(fp, "utf8")
+    const after = adapt(before)
+    if (after !== before) {
+      writeFileSync(fp, after, "utf8")
+      changed++
+    }
   }
+  console.log(`[adapt-obsidian] 扫描 ${files.length} 个 Markdown,修改 ${changed} 个`)
 }
-console.log(`[adapt-obsidian] 扫描 ${files.length} 个 Markdown,修改 ${changed} 个`)
+
+// 仅作为 CLI 直接执行时才扫描写盘;被测试 import 时只导出纯函数
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main()
+}
