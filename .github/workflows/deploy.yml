@@ -22,24 +22,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0 # 保留完整历史,Quartz 用 git 推断文章创建/修改时间
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
 
       - name: Cache npm
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.npm
           key: ${{ runner.os }}-npm-${{ hashFiles('package-lock.json') }}
           restore-keys: ${{ runner.os }}-npm-
 
       - name: Cache Quartz plugins
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .quartz/plugins
           key: ${{ runner.os }}-qzplugins-${{ hashFiles('quartz.lock.json') }}
