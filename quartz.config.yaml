@@ -6,7 +6,7 @@ configuration:
   enablePopovers: true
   analytics: null
   locale: zh-CN
-  baseUrl: ai-knowledge-base-15h.pages.dev
+  baseUrl: ai.frendguo.com
   ignorePatterns:
     - private
     - templates
@@ -137,7 +137,7 @@ plugins:
       enableRSS: true
   - source: github:quartz-community/favicon
     enabled: true
-  - source: github:quartz-community/og-image
+  - source: github:frendguo/og-image#cjk-font-fallback
     enabled: true
   - source: github:quartz-community/cname
     enabled: true

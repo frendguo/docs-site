@@ -176,10 +176,11 @@
       "installedAt": "2026-06-09T09:12:30.130Z"
     },
     "og-image": {
-      "source": "github:quartz-community/og-image",
-      "resolved": "https://github.com/quartz-community/og-image.git",
-      "commit": "31343c612d02c5fd22ff27a1e6035b2486be75f5",
-      "installedAt": "2026-06-09T09:12:27.760Z"
+      "source": "github:frendguo/og-image#cjk-font-fallback",
+      "resolved": "https://github.com/frendguo/og-image.git",
+      "commit": "341cc43b6e7563dca3dd595bfe0b5028f901aa99",
+      "ref": "cjk-font-fallback",
+      "installedAt": "2026-11-16T04:30:00.000Z"
     },
     "ox-hugo": {
       "source": "github:quartz-community/ox-hugo",
