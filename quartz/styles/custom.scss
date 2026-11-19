@@ -7,6 +7,8 @@
 
 /* ---------- 字体：现代系统中文字体栈（零下载，国内秒开） ---------- */
 :root {
+  color-scheme: light dark;
+  accent-color: var(--secondary);
   --headerFont:
     "Schibsted Grotesk", ui-sans-serif, system-ui, -apple-system, "PingFang SC",
     "HarmonyOS Sans SC", "Microsoft YaHei", "Source Han Sans SC", "Noto Sans SC", sans-serif;
@@ -17,12 +19,49 @@
     "JetBrains Mono", "IBM Plex Mono", ui-monospace, "SF Mono", "Cascadia Code", Consolas,
     "PingFang SC", "Microsoft YaHei", monospace;
 }
+:root[saved-theme="light"] {
+  color-scheme: light;
+}
+:root[saved-theme="dark"] {
+  color-scheme: dark;
+}
+
+/* ---------- 全局：视口防溢出、滚动留白与动效偏好 ---------- */
+html {
+  width: auto;
+  overflow-x: clip;
+}
+html:has(article.home) {
+  scroll-padding-top: 5rem; /* 防止聚焦元素与锚点被首页 sticky 顶栏遮挡 (WCAG 2.4.11) */
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
 
 /* ---------- 全局：抗锯齿，文字更细腻 ---------- */
 body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+}
+
+/* ---------- 焦点环：统一可见键盘焦点指示（WCAG 2.4.7 / 1.4.11） ---------- */
+:where(
+  a.internal,
+  .search > .search-button,
+  article.home .home-search,
+  article.home a.home-topic,
+  article.home .home-latest-item > a,
+  article.home a.home-card,
+  article.home .home-more-toggle,
+  .explorer-content ul li > a,
+  .folder-container div > a,
+  .folder-container div > button
+):focus-visible {
+  outline: 2px solid var(--secondary);
+  outline-offset: 2px;
 }
 
 /* ---------- 正文排版：中文友好的行距与字号 ---------- */
@@ -32,6 +71,13 @@ body {
 }
 .center article :is(p, li) {
   line-height: 1.9;
+}
+.center article :is(h1, h2, h3, h4, th),
+article.home :is(.home-title, .home-sec-title) {
+  text-wrap: balance;
+}
+:where(.center article a, .center article code) {
+  overflow-wrap: anywhere;
 }
 .center article h1 {
   font-size: 1.95rem;
@@ -65,7 +111,7 @@ a.internal {
     background-size 0.25s ease,
     color 0.2s ease;
 }
-a.internal:hover {
+a.internal:is(:hover, :focus-visible) {
   color: var(--tertiary) !important;
   background-size: 100% 1.5px;
 }
@@ -103,6 +149,8 @@ a.internal:has(> img) {
   position: sticky !important;
   top: 0;
   z-index: 10;
+  container-name: home-topbar;
+  container-type: scroll-state;
   height: auto !important;
   width: 100%;
   box-sizing: border-box;
@@ -116,6 +164,23 @@ a.internal:has(> img) {
   backdrop-filter: blur(14px) saturate(1.4);
   -webkit-backdrop-filter: blur(14px) saturate(1.4);
   border-bottom: 1px solid color-mix(in srgb, var(--lightgray) 70%, transparent);
+}
+/* 吸顶时仅通过伪元素浮现阴影，避免改变盒模型导致滚动锚定抖动 */
+.page:has(article.home) .sidebar.left::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: -1px;
+  block-size: 1px;
+  pointer-events: none;
+  opacity: 0;
+  box-shadow: 0 4px 18px color-mix(in srgb, var(--dark) 14%, transparent);
+  transition: opacity 0.2s ease;
+}
+@container home-topbar scroll-state(stuck: top) {
+  .page:has(article.home) .sidebar.left::after {
+    opacity: 1;
+  }
 }
 .page:has(article.home) .sidebar.left .page-title {
   margin: 0;
@@ -181,7 +246,7 @@ article.home .home-kicker {
 }
 article.home .home-title {
   margin: 0;
-  font-size: clamp(2.2rem, 4.6vw, 3.4rem);
+  font-size: clamp(2.2rem, 1.5rem + 2.2vw, 3.4rem);
   font-weight: 800;
   letter-spacing: -0.035em;
   line-height: 1.08;
@@ -193,7 +258,7 @@ article.home .home-title .home-dot {
 article.home .home-tagline {
   margin: 0.9rem 0 0;
   max-width: 40em;
-  font-size: clamp(0.98rem, 1.4vw, 1.08rem);
+  font-size: clamp(0.98rem, 0.9rem + 0.25vw, 1.08rem);
   line-height: 1.8;
   color: var(--darkgray);
 }
@@ -204,9 +269,9 @@ article.home .home-search {
   align-items: center;
   gap: 0.8rem;
   width: min(680px, 100%);
-  height: 3.5rem;
+  min-block-size: 3.5rem;
   margin: 1.6rem 0 0;
-  padding: 0 0.9rem 0 1.15rem;
+  padding: 0.5rem 0.9rem 0.5rem 1.15rem;
   box-sizing: border-box;
   border: 1px solid color-mix(in srgb, var(--secondary) 28%, var(--lightgray));
   border-radius: 14px;
@@ -222,9 +287,7 @@ article.home .home-search {
     border-color 0.2s ease,
     box-shadow 0.2s ease;
 }
-article.home .home-search:hover,
-article.home .home-search:focus-visible {
-  outline: none;
+article.home .home-search:is(:hover, :focus-visible) {
   border-color: var(--secondary);
   box-shadow:
     0 0 0 4px color-mix(in srgb, var(--secondary) 14%, transparent),
@@ -264,6 +327,7 @@ article.home .home-search-kbd,
 article.home .home-topics {
   display: flex;
   flex-wrap: wrap;
+  flex-wrap: balance;
   gap: 0.5rem;
   margin: 1.1rem 0 0;
 }
@@ -283,7 +347,7 @@ article.home a.home-topic {
     border-color 0.2s ease,
     color 0.2s ease;
 }
-article.home a.home-topic:hover {
+article.home a.home-topic:is(:hover, :focus-visible) {
   border-color: var(--secondary);
   color: var(--secondary) !important;
 }
@@ -291,6 +355,7 @@ article.home .home-topic-count {
   font-family: var(--codeFont);
   font-size: 0.74rem;
   font-weight: 500;
+  font-variant-numeric: tabular-nums;
   color: var(--gray);
 }
 
@@ -298,6 +363,11 @@ article.home .home-topic-count {
 article.home .home-block {
   margin: 0 0 clamp(2.2rem, 4.5vw, 3.2rem);
   scroll-margin-top: 5rem; /* 锚点跳转避开 sticky 顶栏 */
+}
+/* 首屏之外的专题分区延后布局与绘制，配 contain-intrinsic-block-size 防止滚动条跳动 */
+article.home .home-section ~ .home-section {
+  content-visibility: auto;
+  contain-intrinsic-block-size: auto 32rem;
 }
 article.home .home-sec-head {
   display: flex;
@@ -316,13 +386,14 @@ article.home .home-sec-num {
   font-family: var(--codeFont);
   font-size: 0.9rem;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
   color: var(--secondary);
 }
 article.home .home-sec-title {
   margin: 0;
   padding: 0;
   border: none;
-  font-size: clamp(1.25rem, 2.2vw, 1.45rem);
+  font-size: clamp(1.25rem, 1.05rem + 0.6vw, 1.45rem);
   font-weight: 800;
   letter-spacing: -0.02em;
   color: var(--dark);
@@ -330,6 +401,7 @@ article.home .home-sec-title {
 article.home .home-sec-count {
   font-family: var(--codeFont);
   font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
   color: var(--gray);
   white-space: nowrap;
 }
@@ -362,6 +434,7 @@ article.home .home-latest-item > a {
 article.home .home-latest-date {
   font-family: var(--codeFont);
   font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
   color: var(--gray);
 }
 article.home .home-latest-text {
@@ -396,22 +469,25 @@ article.home .home-latest-tag {
   white-space: nowrap;
   color: var(--secondary);
 }
-article.home .home-latest-item > a:hover {
+article.home .home-latest-item > a:is(:hover, :focus-visible) {
   background: color-mix(in srgb, var(--secondary) 5%, transparent) !important;
 }
-article.home .home-latest-item > a:hover .home-latest-title {
+article.home .home-latest-item > a:is(:hover, :focus-visible) .home-latest-title {
   color: var(--secondary);
 }
 
-/* ---------- 专题分区：卡片网格 ---------- */
+/* ---------- 专题分区：卡片网格（subgrid 对齐同行卡片标题/摘要/日期） ---------- */
 article.home .home-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
   gap: 0.9rem;
 }
 article.home a.home-card {
-  display: flex;
-  flex-direction: column;
+  grid-row: span 3;
+  display: grid;
+  grid-template-rows: auto 1fr auto; /* fallback */
+  grid-template-rows: subgrid;
+  row-gap: 0.45rem;
   min-width: 0;
   padding: 1.05rem 1.15rem !important;
   border: 1px solid var(--lightgray);
@@ -421,12 +497,12 @@ article.home a.home-card {
   text-decoration: none;
   color: var(--dark) !important;
   transition:
-    transform 0.2s ease,
     border-color 0.2s ease,
     box-shadow 0.2s ease;
 }
 article.home .home-card-title {
   margin: 0;
+  align-self: start;
   font-size: 1rem;
   font-weight: 700;
   line-height: 1.5;
@@ -435,40 +511,51 @@ article.home .home-card-title {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
   transition: color 0.2s ease;
 }
 article.home .home-card-desc {
-  margin: 0.45rem 0 0;
-  /* 不可 flex-grow:被拉高后 line-clamp 之外的行会漏出来 */
+  margin: 0;
+  /* align-self: start 防止在 1fr 轨道被拉高后漏出 line-clamp 之外的行 */
+  align-self: start;
   font-size: 0.86rem;
   line-height: 1.65;
   color: var(--gray);
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
 }
 article.home .home-card-meta {
   display: block;
-  margin-top: auto; /* 日期贴卡片底边,同行卡片对齐 */
-  padding-top: 0.75rem;
+  align-self: end; /* 日期贴卡片底边，同行卡片对齐 */
+  padding-top: 0.3rem;
   font-family: var(--codeFont);
   font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
   color: var(--gray);
 }
-article.home a.home-card:hover {
-  transform: translateY(-3px);
+article.home a.home-card:is(:hover, :focus-visible) {
   border-color: color-mix(in srgb, var(--secondary) 55%, var(--lightgray));
   box-shadow: 0 14px 34px -16px color-mix(in srgb, var(--secondary) 45%, transparent);
 }
-article.home a.home-card:hover .home-card-title {
+article.home a.home-card:is(:hover, :focus-visible) .home-card-title {
   color: var(--secondary);
 }
 
-/* 折叠：展开其余 N 篇 */
+/* 折叠：展开/收起其余 N 篇（支持固有高度平滑过渡，且展开后保留可聚焦控件） */
 article.home .home-more {
   margin: 0.9rem 0 0;
+}
+article.home .home-more::details-content {
+  interpolate-size: allow-keywords;
+  overflow: clip;
+  contain: layout;
+}
+article.home .home-more:not([open])::details-content {
+  block-size: 0;
 }
 article.home .home-more-toggle {
   display: flex;
@@ -500,21 +587,28 @@ article.home .home-more-toggle::after {
   margin-top: -0.2rem;
   border-right: 1.5px solid currentColor;
   border-bottom: 1.5px solid currentColor;
-  transform: rotate(45deg);
-  transition: transform 0.2s ease;
+  rotate: 45deg;
 }
-article.home .home-more-toggle:hover {
+article.home .home-more-toggle:is(:hover, :focus-visible) {
   border-color: var(--secondary);
   color: var(--secondary);
 }
-article.home .home-more[open] > .home-more-toggle {
+article.home .home-more:not([open]) > .home-more-toggle .home-more-collapse,
+article.home .home-more[open] > .home-more-toggle .home-more-expand {
   display: none;
+}
+article.home .home-more[open] > .home-more-toggle {
+  margin-bottom: 0.9rem;
+}
+article.home .home-more[open] > .home-more-toggle::after {
+  margin-top: 0.15rem;
+  rotate: -135deg;
 }
 article.home .home-more > .home-grid {
   margin-top: 0;
 }
 
-/* ---------- 入场动效（尊重 reduced-motion） ---------- */
+/* ---------- 动效（尊重 reduced-motion，仅对位移/缩放/展开动画按需启用） ---------- */
 @media (prefers-reduced-motion: no-preference) {
   article.home .home-hero,
   article.home .home-block {
@@ -526,11 +620,45 @@ article.home .home-more > .home-grid {
   article.home .home-section {
     animation-delay: 0.16s;
   }
+  article.home a.home-card {
+    transition:
+      translate 0.2s ease,
+      border-color 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+  article.home a.home-card:is(:hover, :focus-visible) {
+    translate: 0 -3px;
+  }
+  article.home .home-search,
+  article.home a.home-topic,
+  article.home .home-more-toggle {
+    transition:
+      scale 0.15s ease-out,
+      border-color 0.2s ease,
+      color 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+  article.home .home-search:active {
+    scale: 0.99;
+  }
+  article.home a.home-topic:active,
+  article.home .home-more-toggle:active {
+    scale: 0.97;
+  }
+  article.home .home-more-toggle::after {
+    transition: rotate 0.2s ease;
+  }
+  article.home .home-more::details-content {
+    transition: block-size, content-visibility, display;
+    transition-duration: 0.3s;
+    transition-timing-function: ease-in-out;
+    transition-behavior: allow-discrete;
+  }
 }
 @keyframes home-rise {
   from {
     opacity: 0;
-    transform: translateY(16px);
+    translate: 0 16px;
   }
 }
 
@@ -546,7 +674,7 @@ article.home .home-more > .home-grid {
     max-width: none;
   }
   article.home .home-search {
-    height: 3.1rem;
+    min-block-size: 3.1rem;
   }
   article.home .home-search-kbd {
     display: none;
@@ -562,12 +690,27 @@ article.home .home-more > .home-grid {
   }
 }
 
+/* ---------- 触屏设备：交互控件触控热区 >= 44px (WCAG 2.5.5) ---------- */
+@media (pointer: coarse) {
+  article.home a.home-topic,
+  article.home .home-more-toggle,
+  .search > .search-button,
+  .explorer-content ul li > a {
+    min-block-size: 44px;
+  }
+  .explorer-content ul li > a {
+    display: flex;
+    align-items: center;
+  }
+}
+
 /* =====================================================================
    搜索 · 全站统一（侧栏/顶栏按钮 + 弹窗），只覆盖样式，不改插件源码
    ===================================================================== */
 .search > .search-button {
-  height: 2.3rem;
-  padding: 0 0.45rem 0 0;
+  min-block-size: 2.3rem;
+  height: auto;
+  padding: 0.25rem 0.45rem 0.25rem 0;
   gap: 0.1rem;
   border-color: var(--lightgray);
   border-radius: 10px;
@@ -579,9 +722,10 @@ article.home .home-more > .home-grid {
 .search > .search-button > p {
   flex: 1;
 }
-/* 快捷键提示（插件已绑定 Ctrl/⌘+K） */
+/* 快捷键提示（插件已绑定 Ctrl/⌘+K），空 alt 文本避免被读屏器重复朗读 */
 .search > .search-button::after {
   content: "Ctrl K";
+  content: "Ctrl K" / "";
   padding: 0 0.4rem;
   font-size: 0.68rem;
 }
@@ -591,11 +735,11 @@ article.home .home-more > .home-grid {
     display: none;
   }
 }
-.search > .search-button:hover {
+.search > .search-button:is(:hover, :focus-visible) {
   border-color: var(--secondary);
   background: color-mix(in srgb, var(--secondary) 5%, transparent);
 }
-.search > .search-button:hover svg .search-path {
+.search > .search-button:is(:hover, :focus-visible) svg .search-path {
   stroke: var(--secondary);
 }
 /* 弹窗：圆角 + teal 焦点环 */
@@ -610,12 +754,16 @@ article.home .home-more > .home-grid {
   border-radius: 14px !important;
 }
 
-/* ---------- callout / 代码块 / 分隔线：圆角与留白现代化 ---------- */
+/* ---------- callout / 代码块 / 表格 / 分隔线：圆角、留白与滚动隔离 ---------- */
 .callout {
   border-radius: 12px;
 }
 pre {
   border-radius: 10px;
+}
+.table-container,
+pre {
+  overscroll-behavior-x: contain;
 }
 hr {
   margin: 2.5rem auto;
@@ -650,10 +798,35 @@ hr {
   color: var(--gray);
 }
 
-/* 容器:细滚动条 */
+/* 容器：足够对比度的可操作滚动条（>=3:1）+ 防滚动穿透 + 防布局抖动 */
 .explorer-content {
-  scrollbar-width: thin;
-  scrollbar-color: var(--lightgray) transparent;
+  --scrollbar-thumb: var(--gray);
+  --scrollbar-track: transparent;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+@media (prefers-contrast: more) {
+  .explorer-content {
+    --scrollbar-thumb: var(--dark);
+    --scrollbar-track: var(--light);
+  }
+}
+@supports not (scrollbar-color: auto) {
+  .explorer-content {
+    scrollbar-width: auto;
+  }
+  .explorer-content::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  .explorer-content::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 5px;
+  }
+  .explorer-content::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+  }
 }
 
 /* 条目:块级 pill,去掉默认透明度分层改用颜色分层 */
@@ -673,7 +846,7 @@ hr {
     background-color 0.15s ease,
     color 0.15s ease;
 }
-.explorer-content ul li > a:hover {
+.explorer-content ul li > a:is(:hover, :focus-visible) {
   background: color-mix(in srgb, var(--secondary) 5%, transparent);
   color: var(--dark);
 }
@@ -743,5 +916,23 @@ hr {
 @media all and ($desktop) {
   .page:not(:has(article.home)) > #quartz-body .sidebar.right {
     padding-top: 3rem;
+  }
+}
+
+/* =====================================================================
+   强制配色模式（Windows 高对比度）兜底：不依赖渐变背景或阴影传达交互状态
+   ===================================================================== */
+@media (forced-colors: active) {
+  a.internal:not(:has(> img), .home-topic, .home-card) {
+    text-decoration: underline;
+  }
+  article.home .home-latest-item > a {
+    text-decoration: none;
+  }
+  article.home .home-latest-item > a:is(:hover, :focus-visible) .home-latest-title {
+    text-decoration: underline;
+  }
+  .explorer-content ul li > a.active {
+    border: 1px solid Highlight;
   }
 }

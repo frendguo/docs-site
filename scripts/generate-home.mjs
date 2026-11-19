@@ -193,15 +193,15 @@ function renderHero({ articleCount, sections }) {
   )
   return [
     `<header class="home-hero">`,
-    `<p class="home-kicker">AI · Knowledge Base</p>`,
-    `<h1 class="home-title">AI 知识库<span class="home-dot">。</span></h1>`,
+    `<p class="home-kicker" lang="en">AI · Knowledge Base</p>`,
+    `<h1 class="home-title">AI 知识库<span class="home-dot" aria-hidden="true">。</span></h1>`,
     `<p class="home-tagline">${TAGLINE}</p>`,
-    `<button type="button" class="home-search" aria-label="搜索全站文章" onclick="${SEARCH_ONCLICK}">`,
+    `<button type="button" class="home-search" aria-keyshortcuts="Control+K Meta+K" onclick="${SEARCH_ONCLICK}">`,
     `<svg class="home-search-icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="6.5"></circle><path d="M13.5 13.5 18 18"></path></svg>`,
     `<span class="home-search-text">搜索 ${articleCount} 篇笔记的标题、正文与标签…</span>`,
-    `<kbd class="home-search-kbd">Ctrl K</kbd>`,
+    `<kbd class="home-search-kbd" aria-hidden="true">Ctrl K</kbd>`,
     `</button>`,
-    `<nav class="home-topics" aria-label="专题导航">${topics.join("")}</nav>`,
+    `<nav class="home-topics" aria-label="专题">${topics.join("")}</nav>`,
     `</header>`,
   ].join("\n")
 }
@@ -211,7 +211,7 @@ function renderLatest(latest) {
   const items = latest.map((a) =>
     [
       `<li class="home-latest-item"><a href="/${a.slug}" data-no-popover="true">`,
-      `<span class="home-latest-date">${a.date}</span>`,
+      `<time class="home-latest-date" datetime="${a.date}">${a.date}</time>`,
       `<span class="home-latest-text"><span class="home-latest-title">${escapeHtml(a.title)}</span>`,
       `<span class="home-latest-desc">${escapeHtml(a.description)}</span></span>`,
       `<span class="home-latest-tag">${escapeHtml(a.section)}</span>`,
@@ -221,10 +221,10 @@ function renderLatest(latest) {
   return [
     `<section class="home-block home-latest">`,
     `<header class="home-sec-head">`,
-    `<span class="home-sec-num">NEW</span>`,
+    `<span class="home-sec-num" aria-hidden="true">NEW</span>`,
     `<h2 class="home-sec-title">最新更新</h2>`,
     `</header>`,
-    `<ol class="home-latest-list">`,
+    `<ol class="home-latest-list" role="list">`,
     ...items,
     `</ol>`,
     `</section>`,
@@ -232,12 +232,15 @@ function renderLatest(latest) {
 }
 
 function renderCard(a) {
+  const meta = a.date
+    ? `<time class="home-card-meta" datetime="${a.date}">${a.date}</time>`
+    : `<span class="home-card-meta"></span>`
   return (
     [
       `<a class="home-card" href="/${a.slug}" data-no-popover="true">`,
       `<span class="home-card-title">${escapeHtml(a.title)}</span>`,
       `<span class="home-card-desc">${escapeHtml(a.description)}</span>`,
-      `<span class="home-card-meta">${a.date ?? ""}</span>`,
+      meta,
     ].join("") + `</a>`
   )
 }
@@ -249,7 +252,7 @@ function renderSection(section, idx) {
   const lines = [
     `<section class="home-block home-section" id="topic-${idx + 1}">`,
     `<header class="home-sec-head">`,
-    `<span class="home-sec-num">${no}</span>`,
+    `<span class="home-sec-num" aria-hidden="true">${no}</span>`,
     `<h2 class="home-sec-title">${escapeHtml(section.name)}</h2>`,
     `<span class="home-sec-count">${section.articles.length} 篇</span>`,
     `</header>`,
@@ -260,7 +263,7 @@ function renderSection(section, idx) {
   if (rest.length > 0) {
     lines.push(
       `<details class="home-more">`,
-      `<summary class="home-more-toggle">展开其余 ${rest.length} 篇</summary>`,
+      `<summary class="home-more-toggle"><span class="home-more-expand">展开其余 ${rest.length} 篇</span><span class="home-more-collapse">收起其余 ${rest.length} 篇</span></summary>`,
       `<div class="home-grid">`,
       ...rest.map(renderCard),
       `</div>`,

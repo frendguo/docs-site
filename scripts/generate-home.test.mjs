@@ -163,8 +163,19 @@ describe("generate-home 扫描与渲染", () => {
       assert.equal((visible.match(/class="home-card"/g) ?? []).length, 6)
       assert.equal((folded.match(/class="home-card"/g) ?? []).length, 3)
       assert.match(folded, /展开其余 3 篇/)
-      // 搜索入口:点击转发给 Quartz 搜索组件的按钮
-      assert.match(out, /class="home-search"[^>]*onclick="[^"]*\.search-button[^"]*\.click\(\)/)
+      assert.match(folded, /收起其余 3 篇/)
+      // 搜索入口:点击转发给 Quartz 搜索组件的按钮,无覆盖可见文本的 aria-label (WCAG 2.5.3)
+      assert.match(
+        out,
+        /class="home-search"[^>]*aria-keyshortcuts="Control\+K Meta\+K"[^>]*onclick="[^"]*\.search-button[^"]*\.click\(\)/,
+      )
+      assert.doesNotMatch(out, /class="home-search"[^>]*aria-label=/)
+      // 语义与可访问性:英文 kicker 标注 lang,日期用 <time datetime>,grid 列表带 role="list"
+      assert.match(out, /<p class="home-kicker" lang="en">/)
+      assert.match(out, /<nav class="home-topics" aria-label="专题">/)
+      assert.match(out, /<ol class="home-latest-list" role="list">/)
+      assert.match(out, /<time class="home-latest-date" datetime="2026-01-09">2026-01-09<\/time>/)
+      assert.match(out, /<time class="home-card-meta" datetime="2026-01-09">2026-01-09<\/time>/)
       // 专题导航锚点与分区 id 对应
       assert.match(out, /href="#topic-1"/)
       assert.match(out, /id="topic-1"/)
