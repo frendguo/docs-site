@@ -145,17 +145,31 @@ export function ensureFrontmatterTitle(raw, fallbackTitle) {
 const IMAGE_OR_ASSET_EXT =
   /\.(png|jpe?g|gif|webp|svg|avif|bmp|ico|pdf|mp4|webm|mov|mp3|wav|ogg|canvas|excalidraw|base)$/i
 
+// 标点与空白归一化:容忍笔记双链里全角/半角标点差异(如 : vs ：、, vs ，)
+export function normalizeLooseKey(s) {
+  return String(s ?? "")
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[\s\-_:：,，.。;；!！?？()（）[\]【】「」『』"'“”‘’`]+/g, "")
+}
+
 function buildLinkIndex(entries) {
   const byOldRelNoExt = new Map()
   const byOldSubPathNoExt = new Map()
   const byOldQuartzSlug = new Map()
   const byOldStem = new Map()
   const byOldStemSlug = new Map()
+  const byTitle = new Map()
+  const byLooseKey = new Map()
 
   const addMulti = (map, key, entry) => {
+    if (!key) return
     const list = map.get(key)
-    if (list) list.push(entry)
-    else map.set(key, [entry])
+    if (list) {
+      if (!list.includes(entry)) list.push(entry)
+    } else {
+      map.set(key, [entry])
+    }
   }
 
   for (const entry of entries) {
@@ -170,9 +184,24 @@ function buildLinkIndex(entries) {
     byOldQuartzSlug.set(entry.oldQuartzSlug.toLowerCase(), entry)
     addMulti(byOldStem, entry.oldStem.toLowerCase(), entry)
     addMulti(byOldStemSlug, quartzSlugifySegment(entry.oldStem).toLowerCase(), entry)
+    addMulti(byLooseKey, normalizeLooseKey(entry.oldStem), entry)
+
+    const fmTitle = typeof entry.fm?.title === "string" ? entry.fm.title.trim() : ""
+    if (fmTitle) {
+      addMulti(byTitle, fmTitle.toLowerCase(), entry)
+      addMulti(byLooseKey, normalizeLooseKey(fmTitle), entry)
+    }
   }
 
-  return { byOldRelNoExt, byOldSubPathNoExt, byOldQuartzSlug, byOldStem, byOldStemSlug }
+  return {
+    byOldRelNoExt,
+    byOldSubPathNoExt,
+    byOldQuartzSlug,
+    byOldStem,
+    byOldStemSlug,
+    byTitle,
+    byLooseKey,
+  }
 }
 
 function pickBestCandidate(candidates, sourceEntry) {
@@ -223,7 +252,9 @@ function resolveRenameTarget(rawTarget, sourceEntry, linkIndex) {
 
   return (
     pickBestCandidate(linkIndex.byOldStem.get(lower), sourceEntry) ??
-    pickBestCandidate(linkIndex.byOldStemSlug.get(quartzSlugifySegment(cleaned)), sourceEntry)
+    pickBestCandidate(linkIndex.byOldStemSlug.get(quartzSlugifySegment(cleaned)), sourceEntry) ??
+    pickBestCandidate(linkIndex.byTitle?.get(lower), sourceEntry) ??
+    pickBestCandidate(linkIndex.byLooseKey?.get(normalizeLooseKey(cleaned)), sourceEntry)
   )
 }
 

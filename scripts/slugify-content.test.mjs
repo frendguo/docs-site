@@ -433,4 +433,41 @@ describe("slugifyContent 集成流程", () => {
       rmSync(ws, { recursive: true, force: true })
     }
   })
+
+  it("双链容错匹配: 支持半角/全角标点差异及按 frontmatter title 引用", async () => {
+    const ws = makeWorkspace({
+      "content/1 - AI/00 - Agent/Harness 工程：驾驭 Codex.md":
+        "---\nslug: harness-codex\ntitle: Harness 工程：驾驭 Codex\n---\n正文\n",
+      "content/1 - AI/00 - Agent/用 Fable 5 设计循环：自我修正与记忆.md":
+        "---\nslug: fable-5-loops\ntitle: 用 Fable 5 设计循环：自我修正与记忆的两个实战技巧\n---\n正文\n",
+      "content/1 - AI/00 - Agent/引用方.md": [
+        "---",
+        "slug: caller",
+        "title: 引用方",
+        "---",
+        "半角冒号: [[Harness 工程:驾驭 Codex]]",
+        "按完整标题: [[用 Fable 5 设计循环：自我修正与记忆的两个实战技巧]]",
+        "",
+      ].join("\n"),
+      "data/slug-map.json": JSON.stringify({
+        version: 1,
+        folders: { "00 - Agent": "agent" },
+        articles: {},
+      }),
+    })
+
+    try {
+      const contentDir = join(ws, "content")
+      await slugifyContent({ contentDir, mapPath: join(ws, "data", "slug-map.json") })
+      const caller = readFileSync(join(contentDir, "agent", "caller.md"), "utf8")
+      assert.ok(caller.includes("[[agent/harness-codex|Harness 工程:驾驭 Codex]]"))
+      assert.ok(
+        caller.includes(
+          "[[agent/fable-5-loops|用 Fable 5 设计循环：自我修正与记忆的两个实战技巧]]",
+        ),
+      )
+    } finally {
+      rmSync(ws, { recursive: true, force: true })
+    }
+  })
 })

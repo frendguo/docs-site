@@ -17,7 +17,7 @@ jackyzha0/quartz 的 fork（分支 v5，框架源码 vendored 在 `quartz/`）�
 
 ## 构建管道（.github/workflows/deploy.yml）
 
-CI 顺序：rclone 从 Google Drive 拉内容到 `content/1 - AI`、`content/99 - images`（同时导出 `drive-manifest.json` 供 `driveId` 跟踪）→ `node scripts/adapt-obsidian.mjs`（修复 Obsidian 转义和伪标签，幂等可重跑）→ `node scripts/slugify-content.mjs`（按 `data/slug-map.json` + DeepSeek API 为新文章自动生成两级英文短 slug、改写站内双链/图片路径并生成 301 重定向）→ `node scripts/generate-home.mjs`（平铺全部文章到首页）→ `sed -i '/content/d' .gitignore` → 装插件 → `npx quartz build` → `node scripts/trim-content-index.mjs`（搜索索引每篇截断到 2000 字）→ 写入 `public/_redirects` → wrangler 部署 `public/` 到 Cloudflare Pages（项目 ai-knowledge-base）→ 若有新增 slug 映射，CI 自动 `[skip ci]` 回推 `data/slug-map.json`。
+CI 顺序：rclone 从 Google Drive 拉内容到 `content/1 - AI`、`content/99 - images`（同时导出 `drive-manifest.json` 供 `driveId` 跟踪）→ `node scripts/adapt-obsidian.mjs`（修复 Obsidian 转义和伪标签，幂等可重跑）→ `node scripts/slugify-content.mjs`（按 `data/slug-map.json` + DeepSeek API 为新文章自动生成两级英文短 slug、改写站内双链/图片路径并生成 301 重定向）→ `node scripts/generate-home.mjs`（平铺全部文章到首页）→ `sed -i '/content/d' .gitignore` → 装插件 → `npx quartz build` → `node scripts/trim-content-index.mjs`（搜索索引每篇截断到 2000 字）→ `node scripts/patch-postscript.mjs`（修复 301 SPA 跳转与 Explorer 选中项滚入可视区）→ 写入 `public/_redirects` → wrangler 部署 `public/` 到 Cloudflare Pages（项目 ai-knowledge-base）→ 若有新增 slug 映射，CI 自动 `[skip ci]` 回推 `data/slug-map.json`。
 
 关键 gotcha：
 

@@ -108,6 +108,9 @@ jobs:
       - name: Trim search index (减小 contentIndex 全文,提速首屏)
         run: node scripts/trim-content-index.mjs
 
+      - name: Patch postscript (修复 301 SPA 跳转与 Explorer 选中项滚入可视区)
+        run: node scripts/patch-postscript.mjs
+
       - name: Write Cloudflare Pages _redirects (301 兼容旧长链接)
         run: |
           if [ -s "$RUNNER_TEMP/slug-redirects" ]; then
