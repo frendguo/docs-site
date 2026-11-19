@@ -22,6 +22,8 @@ Obsidian 库路径：优先用 `$ARGUMENTS`；没传则询问用户本地 Obsidi
 
 3. **适配 Obsidian 语法**：`node scripts/adapt-obsidian.mjs`（幂等，只作用于 content/ 副本）
 
+3a. **生成英文短 slug 并改写双链**：`node scripts/slugify-content.mjs content --map data/slug-map.json --no-write-map`（复用 `data/slug-map.json`，本地预览不改写仓库映射表）
+
 3b. **生成平铺首页**：`node scripts/generate-home.mjs`（扫描 content/ 覆盖 content/index.md，幂等；index.md 是 git 跟踪文件，清理阶段必须还原）
 
 4. **临时解除 content 忽略**：删除 `.gitignore` 中所有包含 `content` 的行（与 CI 的 `sed -i '/content/d' .gitignore` 等价，共 4 行：1 行注释 + `content/*` + `!content/.gitkeep` + `!content/index.md`）

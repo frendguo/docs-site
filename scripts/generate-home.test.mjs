@@ -237,4 +237,38 @@ describe("generate-home 扫描与渲染", () => {
     const r = spawnSync(process.execPath, [SCRIPT, ghost], { encoding: "utf8" })
     assert.equal(r.status, 1)
   })
+
+  it("支持 slugify-content 后的干净两级目录结构(读 index.md 中文 title 与 sectionOrder,忽略 index.md 与草稿)", () => {
+    const dir = makeContent({
+      "ai-tools.md": md(`title: 01 - AI 工具集\ndescription: 根级指南`),
+      "claude-code/index.md": md(
+        `title: ClaudeCode 实践\nsectionOrder: 1\ngeneratedBy: slugify-content`,
+      ),
+      "claude-code/team-code-review.md": md(
+        `title: Claude Code 团队如何做代码评审\ncreated: 2026-06-01`,
+      ),
+      "claude-code/draft-note.md": md(`title: 草稿\ndraft: true\ncreated: 2026-06-02`),
+      "agent/index.md": md(`title: Agent\nsectionOrder: 0\ngeneratedBy: slugify-content`),
+      "agent/context-engineering.md": md(`title: 上下文工程\ncreated: 2026-05-01`),
+      "originals/index.md": md(`title: 原文存档\nsectionOrder: 2\ngeneratedBy: slugify-content`),
+      "originals/review.md": md(
+        `title: Code Review\ncreated: 2026-06-10\ntranslation: "[[claude-code/team-code-review|团队代码评审]]"`,
+      ),
+    })
+    try {
+      const data = scanContent(dir)
+      assert.deepEqual(
+        data.sections.map((s) => s.name),
+        ["Agent", "ClaudeCode 实践", "原文存档"],
+      )
+      assert.equal(data.sections[1].articles.length, 1, "index.md 与 draft 不计入专题文章")
+      const out = renderHome(data)
+      assert.match(out, /href="\/claude-code\/team-code-review"/)
+      assert.match(out, /href="\/agent\/context-engineering"/)
+      assert.ok(!out.includes('href="/ai-tools"'), "根级 md 不上首页")
+      assert.ok(!out.includes("draft-note"))
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
 })

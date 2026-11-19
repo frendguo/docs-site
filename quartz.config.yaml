@@ -154,9 +154,9 @@ plugins:
     options:
       title: INDEX
       # mapFn/sortFn 以字符串传入:组件序列化进 data-data-fns,客户端 new Function 重建执行
-      # mapFn 去掉「NN - 」排序前缀;sortFn 改按 slugSegment(保留前缀)排,显示名变了顺序不变
+      # mapFn 去掉「NN - 」排序前缀;sortFn 优先按专题顺序排目录,文件按原 title/displayName 排(保留 01..05 序号)
       mapFn: '(node) => { if (node.displayName) { node.displayName = node.displayName.replace(/^\d+\s*-\s*/, "") } }'
-      sortFn: '(a, b) => { if (a.isFolder !== b.isFolder) { return a.isFolder ? -1 : 1 } return (a.slugSegment || "").localeCompare(b.slugSegment || "", undefined, { numeric: true, sensitivity: "base" }) }'
+      sortFn: '(a, b) => { if (a.isFolder !== b.isFolder) { return a.isFolder ? -1 : 1 } if (a.isFolder) { const order = ["agent", "claude-code", "practices", "other", "originals"]; const ia = order.indexOf(a.slugSegment); const ib = order.indexOf(b.slugSegment); if (ia !== -1 || ib !== -1) { return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib) } } const ka = a.data?.title || a.slugSegment || a.displayName || ""; const kb = b.data?.title || b.slugSegment || b.displayName || ""; return ka.localeCompare(kb, "zh-CN", { numeric: true, sensitivity: "base" }) }'
     layout:
       position: left
       priority: 50

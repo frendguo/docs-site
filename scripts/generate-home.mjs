@@ -3,9 +3,10 @@
 // 在 adapt-obsidian.mjs 之后、`quartz build` 之前运行。可重复运行(幂等):
 // 产物完全由扫描结果决定,与 index.md 旧内容无关。
 //
-// 结构约定(与 CI 拉取结构一致):
-//   content/<顶层目录>/<子目录>/**.md → 每个子目录一个专题分区(按日期倒序)
-//   content/<顶层目录>/*.md          → 不上首页(原「精选指南」已移除),仍可经 Explorer/搜索访问
+// 结构约定(支持 slugify-content 后的两级结构,同时向后兼容原 1 - AI 套壳结构):
+//   content/<专题slug>/**.md           → 每个专题目录一个分区(读目录 index.md 的 title/sectionOrder)
+//   content/<顶层目录>/<子目录>/**.md   → 兼容未跑 slugify-content 时的两层目录结构
+//   content/*.md 或 content/<顶层>/*.md → 不上首页(原「精选指南」已移除),仍可经 Explorer/搜索访问
 // 首页顺序:hero(搜索入口 + 专题导航)→ 最新更新(跨专题)→ 各专题分区。
 // 顶层目录名/子目录名中的「NN - 」前缀仅用于排序与编号,展示时去掉。
 //
@@ -103,19 +104,44 @@ function toDateStr(v) {
 
 // ---------- 扫描 ----------
 
+const IGNORED_DIRS = new Set(["private", "templates", ".obsidian"])
+
 function collectMdFiles(dir) {
   const out = []
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = join(dir, entry.name)
-    if (entry.isDirectory()) out.push(...collectMdFiles(full))
-    else if (entry.isFile() && entry.name.toLowerCase().endsWith(".md")) out.push(full)
+    if (entry.isDirectory()) {
+      if (!entry.name.startsWith(".") && !IGNORED_DIRS.has(entry.name)) {
+        out.push(...collectMdFiles(full))
+      }
+    } else if (
+      entry.isFile() &&
+      entry.name.toLowerCase().endsWith(".md") &&
+      entry.name.toLowerCase() !== "index.md"
+    ) {
+      out.push(full)
+    }
   }
   return out
+}
+
+function readFolderMeta(dirPath, dirName) {
+  const { num, name: fallbackName } = splitOrderPrefix(dirName)
+  const indexPath = join(dirPath, "index.md")
+  if (!existsSync(indexPath)) {
+    return { num, name: fallbackName, sectionOrder: null }
+  }
+  const { fm } = splitFrontmatter(readFileSync(indexPath, "utf8"))
+  const title = typeof fm.title === "string" && fm.title.trim() ? fm.title.trim() : fallbackName
+  const sectionOrder =
+    typeof fm.sectionOrder === "number" && Number.isFinite(fm.sectionOrder) ? fm.sectionOrder : null
+  return { num, name: splitOrderPrefix(title).name, sectionOrder }
 }
 
 function readArticle(filePath, contentDir) {
   const raw = readFileSync(filePath, "utf8")
   const { fm, body } = splitFrontmatter(raw)
+  if (fm.draft === true || String(fm.draft).toLowerCase() === "true") return null
   const rel = filePath.slice(resolve(contentDir).length + 1)
   const fileName = rel.split(sep).pop().replace(/\.md$/i, "")
   const fmDate =
@@ -142,34 +168,57 @@ function readArticle(filePath, contentDir) {
 const byDateDesc = (a, b) =>
   (b.date ?? "").localeCompare(a.date ?? "") || a.slug.localeCompare(b.slug)
 
+function buildSection(dirPath, dirName, contentDir) {
+  const files = collectMdFiles(dirPath)
+  if (files.length === 0) return null
+  const { num, name, sectionOrder } = readFolderMeta(dirPath, dirName)
+  const articles = files
+    .map((f) => readArticle(f, contentDir))
+    .filter(Boolean)
+    .map((a) => ({ ...a, section: name }))
+    .sort(byDateDesc)
+  if (articles.length === 0) return null
+  return { num, name, sectionOrder, articles }
+}
+
 // 扫描 content:返回 { sections: [{ num, name, articles }] }
 // 根级 md 不收录;整个专题都是英文原文时(原文存档)排到最后
 export function scanContent(contentDir) {
   const sections = []
   const topDirs = readdirSync(contentDir, { withFileTypes: true })
-    .filter((e) => e.isDirectory())
+    .filter((e) => e.isDirectory() && !e.name.startsWith(".") && !IGNORED_DIRS.has(e.name))
     .map((e) => e.name)
-    .sort()
+    .sort((a, b) => a.localeCompare(b, "zh"))
 
   for (const top of topDirs) {
     const topPath = join(contentDir, top)
     const subDirs = readdirSync(topPath, { withFileTypes: true })
-      .filter((e) => e.isDirectory())
+      .filter((e) => e.isDirectory() && !e.name.startsWith(".") && !IGNORED_DIRS.has(e.name))
       .sort((a, b) => a.name.localeCompare(b.name, "zh"))
-    for (const entry of subDirs) {
-      const files = collectMdFiles(join(topPath, entry.name))
-      if (files.length === 0) continue
-      const { num, name } = splitOrderPrefix(entry.name)
-      const articles = files
-        .map((f) => ({ ...readArticle(f, contentDir), section: name }))
-        .sort(byDateDesc)
-      sections.push({ num, name, articles })
+
+    // 兼容旧两层包装目录(如 1 - AI/00 - Agent/*.md):若子目录含文章则按子目录拆专题
+    const subSections = subDirs
+      .map((entry) => buildSection(join(topPath, entry.name), entry.name, contentDir))
+      .filter(Boolean)
+
+    if (subSections.length > 0) {
+      sections.push(...subSections)
+    } else {
+      const directSection = buildSection(topPath, top, contentDir)
+      if (directSection) sections.push(directSection)
     }
   }
 
   const isArchive = (s) => s.articles.every((a) => a.isOriginal)
-  // Array.prototype.sort 稳定:非原文专题保持目录顺序
-  sections.sort((a, b) => Number(isArchive(a)) - Number(isArchive(b)))
+  // 原文存档排最后;其余优先按 sectionOrder 排序,无 sectionOrder 时保持目录原序
+  sections.sort((a, b) => {
+    const archDiff = Number(isArchive(a)) - Number(isArchive(b))
+    if (archDiff !== 0) return archDiff
+    if (a.sectionOrder != null || b.sectionOrder != null) {
+      return (a.sectionOrder ?? Infinity) - (b.sectionOrder ?? Infinity)
+    }
+    return 0
+  })
   return { sections }
 }
 

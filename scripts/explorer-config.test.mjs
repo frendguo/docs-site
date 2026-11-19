@@ -39,29 +39,50 @@ describe("explorer 配置函数字符串", () => {
     assert.equal(bare.displayName, undefined)
   })
 
-  it("sortFn:文件夹在前,同类按 slugSegment 数字序(显示名去前缀后顺序不变)", () => {
+  it("sortFn:文件夹在前按专题序,文件按原 title 数字序(英文 slug + 隐藏 NN - 前缀下顺序不变)", () => {
     const sortFn = new Function("a", "b", "return (" + explorer.options.sortFn + ")(a, b)")
     const nodes = [
-      { isFolder: false, slugSegment: "05---cli-工具", displayName: "CLI 工具" },
-      { isFolder: true, slugSegment: "00---实践分享", displayName: "实践分享" },
-      { isFolder: false, slugSegment: "01---ai-工具集", displayName: "AI 工具集" },
-      { isFolder: true, slugSegment: "00---agent", displayName: "Agent" },
       {
         isFolder: false,
-        slugSegment: "03---一文玩转-claude-code",
+        slugSegment: "cli-tools",
+        displayName: "CLI 工具",
+        data: { title: "05 - CLI 工具" },
+      },
+      {
+        isFolder: true,
+        slugSegment: "originals",
+        displayName: "原文存档",
+        data: { title: "原文存档" },
+      },
+      {
+        isFolder: false,
+        slugSegment: "ai-tools",
+        displayName: "AI 工具集",
+        data: { title: "01 - AI 工具集" },
+      },
+      {
+        isFolder: true,
+        slugSegment: "claude-code",
+        displayName: "ClaudeCode 实践",
+        data: { title: "ClaudeCode 实践" },
+      },
+      {
+        isFolder: true,
+        slugSegment: "agent",
+        displayName: "Agent",
+        data: { title: "Agent" },
+      },
+      {
+        isFolder: false,
+        slugSegment: "master-claude-code",
         displayName: "一文玩转 Claude Code",
+        data: { title: "03 - 一文玩转 Claude Code" },
       },
     ]
     const sorted = [...nodes].sort(sortFn)
     assert.deepEqual(
       sorted.map((n) => n.slugSegment),
-      [
-        "00---agent",
-        "00---实践分享",
-        "01---ai-工具集",
-        "03---一文玩转-claude-code",
-        "05---cli-工具",
-      ],
+      ["agent", "claude-code", "originals", "ai-tools", "master-claude-code", "cli-tools"],
     )
   })
 })

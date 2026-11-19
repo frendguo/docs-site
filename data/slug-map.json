@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "folders": {
+    "00 - Agent": "agent",
+    "00 - ClaudeCode 实践": "claude-code",
+    "00 - 实践分享": "practices",
+    "00 - 原文存档": "originals",
+    "other": "other"
+  },
+  "articles": {}
+}

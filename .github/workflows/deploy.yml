@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: deploy
@@ -68,12 +68,23 @@ jobs:
           echo "=== 拉取(root_folder_id 方式)==="
           rclone copy "${DRIVE},root_folder_id=${GDRIVE_AI_FOLDER_ID}:" "content/1 - AI" -v --stats-one-line --transfers 16 || true
           rclone copy "${DRIVE},root_folder_id=${GDRIVE_IMAGES_FOLDER_ID}:" "content/99 - images" -v --stats-one-line --transfers 16 || true
+          echo "=== 导出 Google Drive 文件 ID 清单 ==="
+          rclone lsjson "${DRIVE},root_folder_id=${GDRIVE_AI_FOLDER_ID}:" -R --files-only --no-mimetype --no-modtime > "$RUNNER_TEMP/drive-manifest.json" || echo "[]" > "$RUNNER_TEMP/drive-manifest.json"
           echo "=== content 下文件总数 ==="
           find content -type f | wc -l
           rm -f "$RUNNER_TEMP/sa.json"
 
       - name: Adapt Obsidian content
         run: node scripts/adapt-obsidian.mjs
+
+      - name: Generate English slugs & rewrite links
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: |
+          node scripts/slugify-content.mjs content \
+            --map data/slug-map.json \
+            --drive-manifest "$RUNNER_TEMP/drive-manifest.json" \
+            --redirects-out "$RUNNER_TEMP/slug-redirects"
 
       - name: Generate homepage (平铺全部文章到首页)
         run: node scripts/generate-home.mjs
@@ -97,6 +108,13 @@ jobs:
       - name: Trim search index (减小 contentIndex 全文,提速首屏)
         run: node scripts/trim-content-index.mjs
 
+      - name: Write Cloudflare Pages _redirects (301 兼容旧长链接)
+        run: |
+          if [ -s "$RUNNER_TEMP/slug-redirects" ]; then
+            cp "$RUNNER_TEMP/slug-redirects" public/_redirects
+            echo "=== 已写入 public/_redirects ($(wc -l < public/_redirects) 条) ==="
+          fi
+
       - name: Deploy to Cloudflare Pages
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -105,3 +123,16 @@ jobs:
           # 项目不存在时自动创建(首次部署);已存在则忽略报错继续
           npx wrangler@latest pages project create ai-knowledge-base --production-branch=main || echo "项目可能已存在,继续部署"
           npx wrangler@latest pages deploy public --project-name=ai-knowledge-base --branch=main
+
+      - name: Persist updated slug map
+        if: github.ref == 'refs/heads/v5'
+        run: |
+          if ! git diff --quiet data/slug-map.json; then
+            git checkout -- .gitignore content/index.md
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add data/slug-map.json
+            git commit -m "内容:自动更新文章英文 slug 映射 [skip ci]"
+            git pull --rebase origin v5
+            git push origin HEAD:v5
+          fi
