@@ -14,6 +14,7 @@ import {
   splitOrderPrefix,
   extractExcerpt,
   scanContent,
+  pickLatest,
   renderHome,
 } from "./generate-home.mjs"
 
@@ -77,7 +78,7 @@ describe("generate-home 纯函数", () => {
 })
 
 describe("generate-home 扫描与渲染", () => {
-  it("根级 md 进精选,子目录成专题且按日期倒序;HTML 块内无空行", () => {
+  it("根级 md 不上首页(精选指南已移除),子目录成专题且按日期倒序;HTML 块内无空行", () => {
     const dir = makeContent({
       "1 - AI/01 - 工具集.md": md(`title: 01 - 工具集\ndescription: 工具描述`),
       "1 - AI/00 - Agent/旧文.md": md(`title: 旧文\ncreated: 2025-01-01\ndescription: 旧`),
@@ -86,8 +87,7 @@ describe("generate-home 扫描与渲染", () => {
     })
     try {
       const data = scanContent(dir)
-      assert.equal(data.featured.length, 1)
-      assert.equal(data.featured[0].title, "01 - 工具集")
+      assert.equal(data.featured, undefined, "不再产出精选指南")
       assert.equal(data.sections.length, 1)
       assert.deepEqual(
         data.sections[0].articles.map((a) => a.title),
@@ -97,8 +97,9 @@ describe("generate-home 扫描与渲染", () => {
 
       const out = renderHome(data)
       assert.match(out, /cssclasses:\n {2}- home/)
-      assert.match(out, /<b>4<\/b> 篇笔记/)
-      assert.match(out, /href="\/1---ai\/01---工具集"/)
+      assert.match(out, /搜索 3 篇笔记/)
+      assert.ok(!out.includes("精选指南"))
+      assert.ok(!out.includes("01---工具集"), "根级文章不出现在首页")
       assert.match(out, /href="\/1---ai\/00---agent\/嵌套\/更深"/)
       // HTML 块内部不能有空行(CommonMark HTML block 在空行中断)
       for (const block of out.split("\n\n").slice(1)) {
@@ -111,6 +112,62 @@ describe("generate-home 扫描与渲染", () => {
           `a 内出现块级标签: ${m[0].slice(0, 100)}`,
         )
       }
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it("pickLatest:跨专题按日期倒序,同日按 slug;排除原文存档与无 frontmatter 日期的文章", () => {
+    const dir = makeContent({
+      "1 - AI/00 - Agent/甲.md": md(`title: 甲\ncreated: 2026-03-01`),
+      "1 - AI/00 - Agent/乙.md": md(`title: 乙\ncreated: 2026-05-01`),
+      "1 - AI/00 - 实践/丙.md": md(`title: 丙\ncreated: 2026-05-01`),
+      "1 - AI/00 - 实践/丁.md": md(`title: 丁\ncreated: 2026-01-01`),
+      // 英文原文:带 translation 指向译文,不进最新区
+      "1 - AI/00 - 原文存档/Orig.md": md(`title: Orig\ncreated: 2026-09-09\ntranslation: "[[乙]]"`),
+      // 无 frontmatter 日期:mtime 会被 adapt 改写,不可信,不进最新区
+      "1 - AI/00 - Agent/无日期.md": md(`title: 无日期`),
+    })
+    try {
+      const data = scanContent(dir)
+      const latest = pickLatest(data.sections, 3)
+      assert.deepEqual(
+        latest.map((a) => a.title),
+        ["乙", "丙", "甲"],
+      )
+      assert.equal(latest[0].section, "Agent")
+      assert.equal(latest[1].section, "实践")
+      // 全为原文的专题排到最后
+      assert.equal(data.sections.at(-1).name, "原文存档")
+
+      const out = renderHome(data)
+      const latestPos = out.indexOf("home-latest")
+      const firstSection = out.indexOf("home-section")
+      assert.ok(latestPos > 0 && latestPos < firstSection, "最新更新位于专题分区之前")
+      assert.ok(!/home-latest[\s\S]*Orig[\s\S]*home-section/.test(out))
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it("专题超过首屏条数时其余折叠进 details;hero 含可唤起站内搜索的入口与专题导航", () => {
+    const files = {}
+    for (let i = 1; i <= 9; i++) {
+      files[`1 - AI/00 - Agent/文${i}.md`] = md(`title: 文${i}\ncreated: 2026-01-0${i}`)
+    }
+    const dir = makeContent(files)
+    try {
+      const out = renderHome(scanContent(dir))
+      const section = out.slice(out.indexOf('class="home-block home-section"'))
+      const [visible, folded] = section.split("<details")
+      assert.equal((visible.match(/class="home-card"/g) ?? []).length, 6)
+      assert.equal((folded.match(/class="home-card"/g) ?? []).length, 3)
+      assert.match(folded, /展开其余 3 篇/)
+      // 搜索入口:点击转发给 Quartz 搜索组件的按钮
+      assert.match(out, /class="home-search"[^>]*onclick="[^"]*\.search-button[^"]*\.click\(\)/)
+      // 专题导航锚点与分区 id 对应
+      assert.match(out, /href="#topic-1"/)
+      assert.match(out, /id="topic-1"/)
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
@@ -139,6 +196,7 @@ describe("generate-home 扫描与渲染", () => {
       const r1 = spawnSync(process.execPath, [SCRIPT, dir], { encoding: "utf8" })
       assert.equal(r1.status, 0, r1.stderr)
       assert.match(r1.stdout, /已生成首页: 1 篇/)
+      assert.match(r1.stdout, /最新 1 篇/)
       const first = readFileSync(join(dir, "index.md"), "utf8")
       assert.ok(first.includes("home-hero"))
       const r2 = spawnSync(process.execPath, [SCRIPT, dir], { encoding: "utf8" })

@@ -4,8 +4,9 @@
 // 产物完全由扫描结果决定,与 index.md 旧内容无关。
 //
 // 结构约定(与 CI 拉取结构一致):
-//   content/<顶层目录>/*.md          → 「精选指南」目录条目(按 NN 前缀排序)
 //   content/<顶层目录>/<子目录>/**.md → 每个子目录一个专题分区(按日期倒序)
+//   content/<顶层目录>/*.md          → 不上首页(原「精选指南」已移除),仍可经 Explorer/搜索访问
+// 首页顺序:hero(搜索入口 + 专题导航)→ 最新更新(跨专题)→ 各专题分区。
 // 顶层目录名/子目录名中的「NN - 」前缀仅用于排序与编号,展示时去掉。
 //
 // ⚠️ content/index.md 是 git 跟踪文件,本脚本会覆盖它:CI/本地预览属预期,
@@ -17,6 +18,15 @@ import { readFileSync, writeFileSync, readdirSync, statSync, existsSync } from "
 import { join, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 import { parse as parseYaml } from "yaml"
+
+const LATEST_COUNT = 8 // 「最新更新」条数
+const SECTION_VISIBLE = 6 // 每个专题直接展示的卡片数,其余折叠进 <details>
+
+const TAGLINE =
+  "AI 工具、Claude Code 与智能体工程的学习笔记与精选文章,从 Obsidian 知识库自动同步,持续更新。"
+
+// 首页大搜索框本身不是输入框:点击转发给 Quartz 搜索组件(顶栏 .search-button)唤起搜索弹窗
+const SEARCH_ONCLICK = "document.querySelector('.search .search-button')?.click()"
 
 // ---------- frontmatter ----------
 
@@ -108,26 +118,33 @@ function readArticle(filePath, contentDir) {
   const { fm, body } = splitFrontmatter(raw)
   const rel = filePath.slice(resolve(contentDir).length + 1)
   const fileName = rel.split(sep).pop().replace(/\.md$/i, "")
-  const date =
+  const fmDate =
     toDateStr(fm.created) ??
     toDateStr(fm.date) ??
     toDateStr(fm.sourcePublished) ??
-    toDateStr(fm.sourceCreated) ??
-    toDateStr(statSync(filePath).mtime)
+    toDateStr(fm.sourceCreated)
   return {
     title: typeof fm.title === "string" && fm.title.trim() ? fm.title.trim() : fileName,
     description:
       (typeof fm.description === "string" && fm.description.trim()) ||
       (typeof fm.sourceDescription === "string" && fm.sourceDescription.trim()) ||
       extractExcerpt(body),
-    date,
+    // mtime 仅作展示兜底:adapt-obsidian.mjs 改写文件会刷新 mtime,不能参与「最新」判定
+    date: fmDate ?? toDateStr(statSync(filePath).mtime),
+    hasFmDate: fmDate != null,
+    // 英文原文存档以 translation 字段指向其译文;最新区只展示译文,避免成对重复
+    isOriginal: fm.translation != null && fm.translation !== "",
     slug: slugifyMdPath(rel),
   }
 }
 
-// 扫描 content:返回 { featured: [...], sections: [{ num, name, articles }] }
+// 日期倒序,同日按 slug 保证产物稳定(幂等)
+const byDateDesc = (a, b) =>
+  (b.date ?? "").localeCompare(a.date ?? "") || a.slug.localeCompare(b.slug)
+
+// 扫描 content:返回 { sections: [{ num, name, articles }] }
+// 根级 md 不收录;整个专题都是英文原文时(原文存档)排到最后
 export function scanContent(contentDir) {
-  const featured = []
   const sections = []
   const topDirs = readdirSync(contentDir, { withFileTypes: true })
     .filter((e) => e.isDirectory())
@@ -136,111 +153,135 @@ export function scanContent(contentDir) {
 
   for (const top of topDirs) {
     const topPath = join(contentDir, top)
-    const entries = readdirSync(topPath, { withFileTypes: true }).sort((a, b) =>
-      a.name.localeCompare(b.name, "zh"),
-    )
-    for (const entry of entries) {
-      const full = join(topPath, entry.name)
-      if (entry.isFile() && entry.name.toLowerCase().endsWith(".md")) {
-        featured.push(readArticle(full, contentDir))
-      } else if (entry.isDirectory()) {
-        const files = collectMdFiles(full)
-        if (files.length === 0) continue
-        const articles = files
-          .map((f) => readArticle(f, contentDir))
-          .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))
-        sections.push({ ...splitOrderPrefix(entry.name), articles })
-      }
+    const subDirs = readdirSync(topPath, { withFileTypes: true })
+      .filter((e) => e.isDirectory())
+      .sort((a, b) => a.name.localeCompare(b.name, "zh"))
+    for (const entry of subDirs) {
+      const files = collectMdFiles(join(topPath, entry.name))
+      if (files.length === 0) continue
+      const { num, name } = splitOrderPrefix(entry.name)
+      const articles = files
+        .map((f) => ({ ...readArticle(f, contentDir), section: name }))
+        .sort(byDateDesc)
+      sections.push({ num, name, articles })
     }
   }
 
-  // featured 按文件名 NN 前缀排序并重编号展示
-  featured.sort((a, b) => a.slug.localeCompare(b.slug))
-  return { featured, sections }
+  const isArchive = (s) => s.articles.every((a) => a.isOriginal)
+  // Array.prototype.sort 稳定:非原文专题保持目录顺序
+  sections.sort((a, b) => Number(isArchive(a)) - Number(isArchive(b)))
+  return { sections }
+}
+
+// 跨专题取最新 n 篇:只收有 frontmatter 日期的译文/原创
+export function pickLatest(sections, n = LATEST_COUNT) {
+  return sections
+    .flatMap((s) => s.articles)
+    .filter((a) => a.hasFmDate && !a.isOriginal)
+    .sort(byDateDesc)
+    .slice(0, n)
 }
 
 // ---------- 渲染 ----------
 // ⚠️ CommonMark 的 HTML 块在空行处中断,生成的每个顶层 HTML 块内部禁止空行。
+// ⚠️ <a> 内只能放行内元素(span):HTML 解析器会把 a 内的 h3/p 容错拆分成多个 a
 
-function renderHero({ articleCount, sectionCount }) {
-  const stats = [
-    `<span class="home-stat"><b>${articleCount}</b> 篇笔记</span>`,
-    `<span class="home-stat"><b>${sectionCount}</b> 个专题</span>`,
-    `<span class="home-stat">每日自动同步</span>`,
-  ].join("")
+function renderHero({ articleCount, sections }) {
+  const topics = sections.map(
+    (s, i) =>
+      `<a class="home-topic" href="#topic-${i + 1}" data-no-popover="true">${escapeHtml(s.name)}<span class="home-topic-count">${s.articles.length}</span></a>`,
+  )
   return [
     `<header class="home-hero">`,
     `<p class="home-kicker">AI · Knowledge Base</p>`,
     `<h1 class="home-title">AI 知识库<span class="home-dot">。</span></h1>`,
-    `<p class="home-tagline">AI 工具、Claude Code 与智能体工程的学习笔记与精选文章,从 Obsidian 知识库自动同步,持续更新。</p>`,
-    `<p class="home-stats">${stats}</p>`,
+    `<p class="home-tagline">${TAGLINE}</p>`,
+    `<button type="button" class="home-search" aria-label="搜索全站文章" onclick="${SEARCH_ONCLICK}">`,
+    `<svg class="home-search-icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="6.5"></circle><path d="M13.5 13.5 18 18"></path></svg>`,
+    `<span class="home-search-text">搜索 ${articleCount} 篇笔记的标题、正文与标签…</span>`,
+    `<kbd class="home-search-kbd">Ctrl K</kbd>`,
+    `</button>`,
+    `<nav class="home-topics" aria-label="专题导航">${topics.join("")}</nav>`,
     `</header>`,
   ].join("\n")
 }
 
-function renderFeatured(featured) {
-  if (featured.length === 0) return null
-  const items = featured.map((a, i) => {
-    const { num, name } = splitOrderPrefix(a.title)
-    const no = num ?? String(i + 1).padStart(2, "0")
-    return [
-      `<li class="home-toc-item"><a href="/${a.slug}" data-no-popover="true">`,
-      `<span class="home-toc-num">${escapeHtml(no)}</span>`,
-      `<span class="home-toc-text"><span class="home-toc-title">${escapeHtml(name)}</span>`,
-      `<span class="home-toc-desc">${escapeHtml(a.description)}</span></span>`,
-      `<span class="home-toc-arrow" aria-hidden="true">→</span>`,
+function renderLatest(latest) {
+  if (latest.length === 0) return null
+  const items = latest.map((a) =>
+    [
+      `<li class="home-latest-item"><a href="/${a.slug}" data-no-popover="true">`,
+      `<span class="home-latest-date">${a.date}</span>`,
+      `<span class="home-latest-text"><span class="home-latest-title">${escapeHtml(a.title)}</span>`,
+      `<span class="home-latest-desc">${escapeHtml(a.description)}</span></span>`,
+      `<span class="home-latest-tag">${escapeHtml(a.section)}</span>`,
       `</a></li>`,
-    ].join("")
-  })
+    ].join(""),
+  )
   return [
-    `<section class="home-block home-featured">`,
-    `<h2 class="home-block-label">精选指南</h2>`,
-    `<ol class="home-toc">`,
+    `<section class="home-block home-latest">`,
+    `<header class="home-sec-head">`,
+    `<span class="home-sec-num">NEW</span>`,
+    `<h2 class="home-sec-title">最新更新</h2>`,
+    `</header>`,
+    `<ol class="home-latest-list">`,
     ...items,
     `</ol>`,
     `</section>`,
   ].join("\n")
 }
 
+function renderCard(a) {
+  return (
+    [
+      `<a class="home-card" href="/${a.slug}" data-no-popover="true">`,
+      `<span class="home-card-title">${escapeHtml(a.title)}</span>`,
+      `<span class="home-card-desc">${escapeHtml(a.description)}</span>`,
+      `<span class="home-card-meta">${a.date ?? ""}</span>`,
+    ].join("") + `</a>`
+  )
+}
+
 function renderSection(section, idx) {
   const no = String(idx + 1).padStart(2, "0")
-  // ⚠️ <a> 内只能放行内元素(span):HTML 解析器会把 a 内的 h3/p 容错拆分成多个 a
-  const cards = section.articles.map(
-    (a) =>
-      [
-        `<a class="home-card" href="/${a.slug}" data-no-popover="true">`,
-        `<span class="home-card-title">${escapeHtml(a.title)}</span>`,
-        `<span class="home-card-desc">${escapeHtml(a.description)}</span>`,
-        a.date
-          ? `<span class="home-card-meta">${a.date}</span>`
-          : `<span class="home-card-meta"></span>`,
-      ].join("") + `</a>`,
-  )
-  return [
-    `<section class="home-block home-section">`,
+  const visible = section.articles.slice(0, SECTION_VISIBLE)
+  const rest = section.articles.slice(SECTION_VISIBLE)
+  const lines = [
+    `<section class="home-block home-section" id="topic-${idx + 1}">`,
     `<header class="home-sec-head">`,
     `<span class="home-sec-num">${no}</span>`,
     `<h2 class="home-sec-title">${escapeHtml(section.name)}</h2>`,
     `<span class="home-sec-count">${section.articles.length} 篇</span>`,
     `</header>`,
     `<div class="home-grid">`,
-    ...cards,
+    ...visible.map(renderCard),
     `</div>`,
-    `</section>`,
-  ].join("\n")
+  ]
+  if (rest.length > 0) {
+    lines.push(
+      `<details class="home-more">`,
+      `<summary class="home-more-toggle">展开其余 ${rest.length} 篇</summary>`,
+      `<div class="home-grid">`,
+      ...rest.map(renderCard),
+      `</div>`,
+      `</details>`,
+    )
+  }
+  lines.push(`</section>`)
+  return lines.join("\n")
 }
 
-export function renderHome({ featured, sections }) {
-  const articleCount = featured.length + sections.reduce((n, s) => n + s.articles.length, 0)
+export function renderHome({ sections }) {
+  const articleCount = sections.reduce((n, s) => n + s.articles.length, 0)
   const blocks = [
-    renderHero({ articleCount, sectionCount: sections.length }),
-    renderFeatured(featured),
+    renderHero({ articleCount, sections }),
+    renderLatest(pickLatest(sections)),
     ...sections.map((s, i) => renderSection(s, i)),
   ].filter(Boolean)
   const frontmatter = [
     `---`,
     `title: AI 知识库`,
-    `description: AI 工具、Claude Code 与智能体工程的学习笔记与精选文章,从 Obsidian 知识库自动同步,持续更新。`,
+    `description: ${TAGLINE}`,
     `cssclasses:`,
     `  - home`,
     `---`,
@@ -258,7 +299,7 @@ function main() {
     process.exit(1)
   }
   const data = scanContent(contentDir)
-  const total = data.featured.length + data.sections.reduce((n, s) => n + s.articles.length, 0)
+  const total = data.sections.reduce((n, s) => n + s.articles.length, 0)
   if (total === 0) {
     // 内容未拉取(裸构建):保留仓库里的 index.md,不生成空首页
     console.log(`[generate-home] 未发现文章,保持 index.md 原样`)
@@ -267,7 +308,7 @@ function main() {
   const out = join(contentDir, "index.md")
   writeFileSync(out, renderHome(data), "utf8")
   console.log(
-    `[generate-home] 已生成首页: ${total} 篇(精选 ${data.featured.length} + ${data.sections.length} 个专题)→ ${out}`,
+    `[generate-home] 已生成首页: ${total} 篇(${data.sections.length} 个专题,最新 ${pickLatest(data.sections).length} 篇)→ ${out}`,
   )
 }
 
