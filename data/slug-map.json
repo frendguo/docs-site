@@ -116,6 +116,14 @@
       "slug": "be-more-ambitious-tutorial",
       "driveId": "1j-M9GMEDOqaSkB0ilMbZXd8zOsOUSwl6"
     },
+    "1 - AI/00 - 原文存档/How Uber Evals 1 Million Agent Skill Invocations a Month.md": {
+      "slug": "uber-agent-skill-evals-month",
+      "driveId": "1A3tm3YTWq6E6aSECq8VlySIXZYeVfHN6"
+    },
+    "1 - AI/00 - 原文存档/Loops and Graphs - how to stop babysitting agents and only approve the last step.md": {
+      "slug": "loops-graphs-full-course",
+      "driveId": "111TBXdgI3jt6baOfgY_dwjYaYtdZbuGH"
+    },
     "1 - AI/00 - 原文存档/Prompting Claude Fable 5.md": {
       "slug": "prompting-claude-fable-5",
       "driveId": "17H0HHJ5tLnOJ-MQCSlSbrCZMbZf_pM3k"
@@ -216,6 +224,10 @@
       "slug": "loop-engineering-14-step-roadmap",
       "driveId": "1eMdRZo0d6abJlPP-7pmU7z7kPNrpHnbM"
     },
+    "1 - AI/00 - Agent/循环与编排图：不再给智能体当保姆，只审批最后一步.md": {
+      "slug": "loops-graphs-approve-last-step",
+      "driveId": "1KzGhqFPcOM4ifCmuh_nr-ao0QuerStSw"
+    },
     "1 - AI/00 - Agent/用 Fable 5 设计循环：自我修正与记忆.md": {
       "slug": "fable-5-self-correction-memory",
       "driveId": "1TKpyR6wF_mFMjIFX15nekSR4M5AMkSYX"
@@ -279,6 +291,10 @@
     "1 - AI/00 - Agent/Perplexity Skill 设计、迭代与维护指南.md": {
       "slug": "perplexity-skill-design-guide",
       "driveId": "1InomoxTs1-OZphAS0uVXrtZCUyQ4-B2b"
+    },
+    "1 - AI/00 - Agent/Uber 如何评测每月百万次智能体 Skill 调用.md": {
+      "slug": "uber-agent-skill-evals",
+      "driveId": "12GJOayxO7hgCNHc_R1KSDaIGkC9WrT4u"
     },
     "1 - AI/00 - ClaudeCode 实践/反馈循环：让 Claude Code 少盯着也能完成有野心的任务.md": {
       "slug": "feedback-loops-ambitious-tasks",
